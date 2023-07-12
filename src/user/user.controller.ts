@@ -10,10 +10,13 @@ import {
   UsePipes,
   ValidationPipe,
   UnauthorizedException,
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UserGuard } from './user.guard';
 
 @Controller('user')
 export class UserController {
@@ -41,7 +44,17 @@ export class UserController {
     );
     if (!isPasswordCorrect)
       throw new UnauthorizedException('Email or password is incorrect');
-    return createUserDto;
+    const token = await this.userService.generateJWT(
+      existingUser.id,
+      existingUser.email,
+    );
+    return token;
+  }
+
+  @UseGuards(UserGuard)
+  @Get('profile')
+  getProfile(@Request() req) {
+    return 'Autorized';
   }
 
   @Get(':id')
