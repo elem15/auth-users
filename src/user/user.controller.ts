@@ -20,14 +20,11 @@ export class UserController {
   @UsePipes(new ValidationPipe())
   @Post('register')
   async create(@Body() createUserDto: CreateUserDto) {
+    const existingUser = await this.userService.findByName(createUserDto.email);
+    if (existingUser) throw new BadRequestException('User already exist');
     const user = await this.userService.create(createUserDto);
     if (!user) throw new BadRequestException('User data is incorrect');
     return user;
-  }
-
-  @Get()
-  findAll() {
-    return this.userService.findAll();
   }
 
   @Get(':id')
