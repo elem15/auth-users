@@ -1,11 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 @Injectable()
 export class UserService {
-  create(createUserDto: CreateUserDto) {
-    return createUserDto;
+  public async create(createUserDto: CreateUserDto) {
+    try {
+      const user = await prisma.user.create({ data: createUserDto });
+      return user;
+    } catch (e) {
+      console.error(e);
+      return { message: 'sending data is incorrect' };
+    }
   }
 
   findAll() {
