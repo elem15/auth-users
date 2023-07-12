@@ -2,7 +2,7 @@ import { PartialType } from '@nestjs/mapped-types';
 import { CreateUserDto } from './create-user.dto';
 import { IsEmpty, IsInt, IsString, Length } from 'class-validator';
 
-export class UpdateUserDto extends CreateUserDto {
+export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsEmpty()
   @IsInt()
   id: number;

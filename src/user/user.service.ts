@@ -4,10 +4,12 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma.service';
 import { compare, genSalt, hash } from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService, private jwtService: JwtService) { }
+
   public async create(
     createUserDto: Prisma.UserCreateInput,
   ): Promise<Omit<UpdateUserDto, 'password'> | null> {
@@ -29,7 +31,40 @@ export class UserService {
     }
   }
 
-  public async findByName(email: string): Promise<UpdateUserDto> {
+  public async update(
+    id: number,
+    updateUserDto: Omit<UpdateUserDto, 'id'>,
+  ): Promise<Omit<UpdateUserDto, 'password'> | null> {
+    let password: string;
+    if (updateUserDto.password) {
+      const salt = await genSalt(10);
+      password = await hash(updateUserDto.password, salt);
+    }
+    let data: Omit<UpdateUserDto, 'id'>;
+    if (password) {
+      data = {
+        ...updateUserDto,
+        password,
+      };
+    } else {
+      const { password: _, ...omitData } = updateUserDto;
+      data = omitData;
+    }
+    try {
+      const user = await this.prisma.user.update({
+        where: { id },
+        data,
+      });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...safeUser } = user;
+      return safeUser;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  }
+
+  public async findByName(email: string): Promise<CreateUserDto> {
     try {
       const user = await this.prisma.user.findFirst({
         where: { email },
@@ -41,17 +76,14 @@ export class UserService {
     }
   }
 
-  public async validateUser(
-    password: string,
-    createUserDto: Prisma.UserCreateInput,
-  ) {
+  public async validateUser(password: string, createUserDto: CreateUserDto) {
     const isPasswordCorrect = await compare(password, createUserDto.password);
     if (!isPasswordCorrect) return null;
     return true;
   }
 
   public async generateJWT(id: number, email: string) {
-    const payload = { sub: id, username: email };
+    const payload = { sub: id, userEmail: email };
     return {
       access_token: await this.jwtService.signAsync(payload),
     };
@@ -71,10 +103,6 @@ export class UserService {
       console.error(e);
       return null;
     }
-  }
-
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
   }
 
   remove(id: number) {
