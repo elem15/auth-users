@@ -3,10 +3,11 @@ import { Prisma } from '@prisma/client';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma.service';
 import { compare, genSalt, hash } from 'bcryptjs';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private prisma: PrismaService, private jwtService: JwtService) { }
   public async create(
     createUserDto: Prisma.UserCreateInput,
   ): Promise<Omit<UpdateUserDto, 'password'> | null> {
@@ -47,6 +48,13 @@ export class UserService {
     const isPasswordCorrect = await compare(password, createUserDto.password);
     if (!isPasswordCorrect) return null;
     return true;
+  }
+
+  public async generageJWT(id: number, email: string) {
+    const payload = { sub: id, username: email };
+    return {
+      access_token: await this.jwtService.signAsync(payload),
+    };
   }
 
   public async findOne(

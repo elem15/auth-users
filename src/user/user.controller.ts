@@ -35,14 +35,13 @@ export class UserController {
     if (!existingUser) {
       throw new UnauthorizedException('Email or password is incorrect');
     }
-
     const isPasswordCorrect = await this.userService.validateUser(
       createUserDto.password,
       existingUser,
     );
     if (!isPasswordCorrect)
       throw new UnauthorizedException('Email or password is incorrect');
-    return createUserDto.email;
+    return createUserDto;
   }
 
   @Get(':id')
