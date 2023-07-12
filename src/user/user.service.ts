@@ -13,7 +13,7 @@ export class UserService {
       return user;
     } catch (e) {
       console.error(e);
-      return { message: 'sending data is incorrect' };
+      return null;
     }
   }
 
