@@ -9,6 +9,7 @@ import {
   BadRequestException,
   UsePipes,
   ValidationPipe,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -25,6 +26,23 @@ export class UserController {
     const user = await this.userService.create(createUserDto);
     if (!user) throw new BadRequestException('User data is incorrect');
     return user;
+  }
+
+  @UsePipes(new ValidationPipe())
+  @Post('login')
+  async login(@Body() createUserDto: CreateUserDto) {
+    const existingUser = await this.userService.findByName(createUserDto.email);
+    if (!existingUser) {
+      throw new UnauthorizedException('Email or password is incorrect');
+    }
+
+    const isPasswordCorrect = await this.userService.validateUser(
+      createUserDto.password,
+      existingUser,
+    );
+    if (!isPasswordCorrect)
+      throw new UnauthorizedException('Email or password is incorrect');
+    return createUserDto.email;
   }
 
   @Get(':id')

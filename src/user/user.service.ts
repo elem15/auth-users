@@ -1,30 +1,34 @@
 import { Injectable } from '@nestjs/common';
-import { User, Prisma } from '@prisma/client';
-import { CreateUserDto } from './dto/create-user.dto';
+import { Prisma } from '@prisma/client';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma.service';
-import { genSaltSync, hashSync } from 'bcryptjs';
+import { compare, genSalt, hash } from 'bcryptjs';
 
 @Injectable()
 export class UserService {
   constructor(private readonly prisma: PrismaService) { }
-  public async create(createUserDto: Prisma.UserCreateInput) {
-    const salt = genSaltSync(10);
+  public async create(
+    createUserDto: Prisma.UserCreateInput,
+  ): Promise<Omit<UpdateUserDto, 'password'> | null> {
+    const salt = await genSalt(10);
+    const password = await hash(createUserDto.password, salt);
     try {
       const user = await this.prisma.user.create({
         data: {
           ...createUserDto,
-          password: hashSync(createUserDto.password, salt),
+          password,
         },
       });
-      return user;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...safeUser } = user;
+      return safeUser;
     } catch (e) {
       console.error(e);
       return null;
     }
   }
 
-  public async findByName(email: string) {
+  public async findByName(email: string): Promise<UpdateUserDto> {
     try {
       const user = await this.prisma.user.findFirst({
         where: { email },
@@ -36,12 +40,25 @@ export class UserService {
     }
   }
 
-  public async findOne(id: number) {
+  public async validateUser(
+    password: string,
+    createUserDto: Prisma.UserCreateInput,
+  ) {
+    const isPasswordCorrect = await compare(password, createUserDto.password);
+    if (!isPasswordCorrect) return null;
+    return true;
+  }
+
+  public async findOne(
+    id: number,
+  ): Promise<Omit<UpdateUserDto, 'password'> | null> {
     try {
       const user = await this.prisma.user.findFirst({
         where: { id },
       });
-      return user;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password, ...safeUser } = user;
+      return safeUser;
     } catch (e) {
       console.error(e);
       return null;
