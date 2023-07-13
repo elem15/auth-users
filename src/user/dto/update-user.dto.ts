@@ -3,6 +3,7 @@ import { CreateUserDto } from './create-user.dto';
 import { IsInt, IsOptional, Length } from 'class-validator';
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {
+  @IsOptional()
   @IsInt()
   id: number;
   @IsOptional()

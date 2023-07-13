@@ -1,6 +1,6 @@
 export class TokenUserDto {
   sub: number;
-  userEmail: string;
+  username: string;
   iat: number;
   exp: number;
 }

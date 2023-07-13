@@ -17,7 +17,7 @@ export class UserService {
         data,
       });
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password: _, ...safeUser } = user;
+      const { password: _, refreshToken, ...safeUser } = user;
       return safeUser;
     } catch (e) {
       console.error(e);
@@ -34,6 +34,7 @@ export class UserService {
       const password = await argon2.hash(updateUserDto.password);
       data = { ...updateUserDto, password };
     } else {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: _, ...omitData } = updateUserDto;
       data = omitData;
     }
@@ -43,7 +44,7 @@ export class UserService {
         data,
       });
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password: _, ...safeUser } = user;
+      const { password: _, refreshToken, ...safeUser } = user;
       return safeUser;
     } catch (e) {
       console.error(e);
@@ -79,7 +80,15 @@ export class UserService {
     }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  public async remove(id: number) {
+    try {
+      const user = await this.prisma.user.delete({
+        where: { id },
+      });
+      return user;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
   }
 }

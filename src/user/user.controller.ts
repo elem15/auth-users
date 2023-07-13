@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Patch,
   Param,
@@ -9,33 +8,28 @@ import {
   BadRequestException,
   UsePipes,
   ValidationPipe,
-  Request,
+  HttpCode,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { TokenUserDto } from './dto/token-user.dto';
+import { AccessTokenGuard } from 'src/common/guards/access-token.guard';
 
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
-  // @Get('profile')
-  // public async getProfile(
-  //   @Request() req,
-  // ): Promise<Omit<UpdateUserDto, 'password'>> {
-  //   const tokenUser = req.user as TokenUserDto;
-  //   const userProfile = await this.userService.findOne(tokenUser.sub);
-  //   if (!userProfile) throw new BadRequestException('Profile not found');
-  //   return userProfile;
-  // }
-
+  @UseGuards(AccessTokenGuard)
   @Get(':id')
   public async findOne(@Param('id') id: string) {
-    return await this.userService.findOne(+id);
+    const user = await this.userService.findOne(+id);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { refreshToken, ...safeUser } = user;
+    return safeUser;
   }
 
   @UsePipes(new ValidationPipe())
+  @UseGuards(AccessTokenGuard)
   @Patch(':id')
   public async update(
     @Param('id') id: string,
@@ -46,12 +40,21 @@ export class UserController {
       throw new BadRequestException('User not found');
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { id: _, ...user } = updateUserDto;
-    return await this.userService.update(+id, user);
+    const { id: _, refreshToken, ...user } = updateUserDto;
+    const updatedUser = await this.userService.update(+id, user);
+    if (!updatedUser) {
+      throw new BadRequestException('This email already exist');
+    }
+    return updatedUser;
   }
 
+  @UseGuards(AccessTokenGuard)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+  @HttpCode(204)
+  public async remove(@Param('id') id: string) {
+    const updatedUser = await this.userService.remove(+id);
+    if (!updatedUser) {
+      throw new BadRequestException("User didn't delete");
+    }
   }
 }
