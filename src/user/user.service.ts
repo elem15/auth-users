@@ -3,12 +3,11 @@ import { Prisma } from '@prisma/client';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma.service';
 import { compare, genSalt, hash } from 'bcryptjs';
-import { JwtService } from '@nestjs/jwt';
 import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService, private jwtService: JwtService) { }
+  constructor(private prisma: PrismaService) { }
 
   public async create(
     createUserDto: Prisma.UserCreateInput,
@@ -64,7 +63,7 @@ export class UserService {
     }
   }
 
-  public async findByName(email: string): Promise<CreateUserDto> {
+  public async findByEmail(email: string): Promise<CreateUserDto> {
     try {
       const user = await this.prisma.user.findFirst({
         where: { email },
@@ -80,13 +79,6 @@ export class UserService {
     const isPasswordCorrect = await compare(password, createUserDto.password);
     if (!isPasswordCorrect) return null;
     return true;
-  }
-
-  public async generateJWT(id: number, email: string) {
-    const payload = { sub: id, userEmail: email };
-    return {
-      access_token: await this.jwtService.signAsync(payload),
-    };
   }
 
   public async findOne(

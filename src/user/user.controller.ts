@@ -10,13 +10,11 @@ import {
   UsePipes,
   ValidationPipe,
   UnauthorizedException,
-  UseGuards,
   Request,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserGuard } from './user.guard';
 import { TokenUserDto } from './dto/token-user.dto';
 
 @Controller('user')
@@ -25,34 +23,13 @@ export class UserController {
   @UsePipes(new ValidationPipe())
   @Post('register')
   public async create(@Body() createUserDto: CreateUserDto) {
-    const existingUser = await this.userService.findByName(createUserDto.email);
+    const existingUser = await this.userService.findByEmail(createUserDto.email);
     if (existingUser) throw new BadRequestException('User already exist');
     const user = await this.userService.create(createUserDto);
     if (!user) throw new BadRequestException('User data is incorrect');
     return user;
   }
 
-  @UsePipes(new ValidationPipe())
-  @Post('login')
-  public async login(@Body() createUserDto: CreateUserDto) {
-    const existingUser = await this.userService.findByName(createUserDto.email);
-    if (!existingUser) {
-      throw new UnauthorizedException('Email or password is incorrect');
-    }
-    const isPasswordCorrect = await this.userService.validateUser(
-      createUserDto.password,
-      existingUser,
-    );
-    if (!isPasswordCorrect)
-      throw new UnauthorizedException('Email or password is incorrect');
-    const token = await this.userService.generateJWT(
-      existingUser.id,
-      existingUser.email,
-    );
-    return token;
-  }
-
-  @UseGuards(UserGuard)
   @Get('profile')
   public async getProfile(
     @Request() req,
