@@ -13,6 +13,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
   ) { }
+
   async signUp(createUserDto: CreateUserDto): Promise<any> {
     // Check if user exists
     const userExists = await this.userService.findByEmail(createUserDto.email);

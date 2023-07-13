@@ -2,24 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma.service';
-import { compare, genSalt, hash } from 'bcryptjs';
 import { CreateUserDto } from './dto/create-user.dto';
+import * as argon2 from 'argon2';
 
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService) { }
 
   public async create(
-    createUserDto: Prisma.UserCreateInput,
+    data: Prisma.UserCreateInput,
   ): Promise<Omit<UpdateUserDto, 'password'> | null> {
-    const salt = await genSalt(10);
-    const password = await hash(createUserDto.password, salt);
     try {
       const user = await this.prisma.user.create({
-        data: {
-          ...createUserDto,
-          password,
-        },
+        data,
       });
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: _, ...safeUser } = user;
@@ -34,17 +29,10 @@ export class UserService {
     id: number,
     updateUserDto: Omit<UpdateUserDto, 'id'>,
   ): Promise<Omit<UpdateUserDto, 'password'> | null> {
-    let password: string;
-    if (updateUserDto.password) {
-      const salt = await genSalt(10);
-      password = await hash(updateUserDto.password, salt);
-    }
     let data: Omit<UpdateUserDto, 'id'>;
-    if (password) {
-      data = {
-        ...updateUserDto,
-        password,
-      };
+    if (updateUserDto.password) {
+      const password = await argon2.hash(updateUserDto.password);
+      data = { ...updateUserDto, password };
     } else {
       const { password: _, ...omitData } = updateUserDto;
       data = omitData;
@@ -73,12 +61,6 @@ export class UserService {
       console.error(e);
       return null;
     }
-  }
-
-  public async validateUser(password: string, createUserDto: CreateUserDto) {
-    const isPasswordCorrect = await compare(password, createUserDto.password);
-    if (!isPasswordCorrect) return null;
-    return true;
   }
 
   public async findOne(
