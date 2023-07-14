@@ -5,7 +5,6 @@ import { AuthService } from './auth.service';
 import { AccessTokenStrategy } from './strategies/access-token.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 import { UserModule } from '../user/user.module';
-import { UserService } from '../user/user.service';
 import { PrismaService } from 'src/prisma.service';
 import { ConfigService } from '@nestjs/config';
 
@@ -20,4 +19,4 @@ import { ConfigService } from '@nestjs/config';
     ConfigService,
   ],
 })
-export class AuthModule { }
+export class AuthModule {}

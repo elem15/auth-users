@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthDto } from './dto/auth.dto';
 import * as argon2 from 'argon2';
 import { UserService } from '../user/user.service';
+import { ACCESS_TOKEN_LIFE_TIME } from './auth.constants';
 
 @Injectable()
 export class AuthService {
@@ -15,7 +16,7 @@ export class AuthService {
     private userService: UserService,
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) { }
+  ) {}
 
   async signUp(authUserDto: AuthDto): Promise<any> {
     // Check if user exists
@@ -32,7 +33,12 @@ export class AuthService {
     });
     const tokens = await this.getTokens(newUser.id, newUser.email);
     await this.updateRefreshToken(newUser.id, tokens.refreshToken);
-    return { ...tokens, id: newUser.id, email: newUser.email };
+    return {
+      ...tokens,
+      userId: newUser.id,
+      email: newUser.email,
+      exp: Date.now() + ACCESS_TOKEN_LIFE_TIME * 1000,
+    };
   }
 
   async signIn(authUserDto: AuthDto) {
@@ -47,7 +53,12 @@ export class AuthService {
       throw new BadRequestException('Password is incorrect');
     const tokens = await this.getTokens(user.id, user.email);
     await this.updateRefreshToken(user.id, tokens.refreshToken);
-    return { ...tokens, id: user.id, email: user.email };
+    return {
+      ...tokens,
+      userId: user.id,
+      email: user.email,
+      exp: Date.now() + ACCESS_TOKEN_LIFE_TIME * 1000,
+    };
   }
 
   async logout(userId: number) {
@@ -70,7 +81,7 @@ export class AuthService {
         },
         {
           secret: this.configService.get<string>('ACCESS_SECRET'),
-          expiresIn: '15m',
+          expiresIn: `${ACCESS_TOKEN_LIFE_TIME}s`,
         },
       ),
       this.jwtService.signAsync(
@@ -80,7 +91,7 @@ export class AuthService {
         },
         {
           secret: this.configService.get<string>('REFRESH_SECRET'),
-          expiresIn: '7d',
+          expiresIn: '3d',
         },
       ),
     ]);
@@ -102,6 +113,11 @@ export class AuthService {
     if (!refreshTokenMatches) throw new ForbiddenException('Access Denied');
     const tokens = await this.getTokens(user.id, user.email);
     await this.updateRefreshToken(user.id, tokens.refreshToken);
-    return { ...tokens, id: user.id, email: user.email };
+    return {
+      ...tokens,
+      userId: user.id,
+      email: user.email,
+      exp: Date.now() + ACCESS_TOKEN_LIFE_TIME * 1000,
+    };
   }
 }

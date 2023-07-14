@@ -17,7 +17,7 @@ import { AccessTokenGuard } from 'src/common/guards/access-token.guard';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @UseGuards(AccessTokenGuard)
   @Get(':id')

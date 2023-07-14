@@ -16,7 +16,7 @@ import { RefreshTokenGuard } from 'src/common/guards/refresh-token.guard';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @UsePipes(new ValidationPipe())
   @Post('signup')

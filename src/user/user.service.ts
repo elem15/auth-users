@@ -7,7 +7,7 @@ import * as argon2 from 'argon2';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
   public async create(
     data: Prisma.UserCreateInput,
