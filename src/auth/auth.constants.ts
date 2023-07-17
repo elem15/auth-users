@@ -1,1 +1,1 @@
-export const ACCESS_TOKEN_LIFE_TIME = 60;
+export const ACCESS_TOKEN_LIFE_TIME = 30;
