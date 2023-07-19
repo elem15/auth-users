@@ -2,26 +2,22 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { PrismaService } from '../prisma.service';
-import { compare, genSalt, hash } from 'bcryptjs';
-import { JwtService } from '@nestjs/jwt';
+import { CreateUserDto } from './dto/create-user.dto';
+import * as argon2 from 'argon2';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService, private jwtService: JwtService) { }
+  constructor(private prisma: PrismaService) {}
+
   public async create(
-    createUserDto: Prisma.UserCreateInput,
+    data: Prisma.UserCreateInput,
   ): Promise<Omit<UpdateUserDto, 'password'> | null> {
-    const salt = await genSalt(10);
-    const password = await hash(createUserDto.password, salt);
     try {
       const user = await this.prisma.user.create({
-        data: {
-          ...createUserDto,
-          password,
-        },
+        data,
       });
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password: _, ...safeUser } = user;
+      const { password: _, refreshToken, ...safeUser } = user;
       return safeUser;
     } catch (e) {
       console.error(e);
@@ -29,7 +25,34 @@ export class UserService {
     }
   }
 
-  public async findByName(email: string): Promise<UpdateUserDto> {
+  public async update(
+    id: number,
+    updateUserDto: Omit<UpdateUserDto, 'id'>,
+  ): Promise<Omit<UpdateUserDto, 'password'> | null> {
+    let data: Omit<UpdateUserDto, 'id'>;
+    if (updateUserDto.password) {
+      const password = await argon2.hash(updateUserDto.password);
+      data = { ...updateUserDto, password };
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, ...omitData } = updateUserDto;
+      data = omitData;
+    }
+    try {
+      const user = await this.prisma.user.update({
+        where: { id },
+        data,
+      });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _, refreshToken, ...safeUser } = user;
+      return safeUser;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
+  }
+
+  public async findByEmail(email: string): Promise<CreateUserDto> {
     try {
       const user = await this.prisma.user.findFirst({
         where: { email },
@@ -39,22 +62,6 @@ export class UserService {
       console.error(e);
       return null;
     }
-  }
-
-  public async validateUser(
-    password: string,
-    createUserDto: Prisma.UserCreateInput,
-  ) {
-    const isPasswordCorrect = await compare(password, createUserDto.password);
-    if (!isPasswordCorrect) return null;
-    return true;
-  }
-
-  public async generateJWT(id: number, email: string) {
-    const payload = { sub: id, username: email };
-    return {
-      access_token: await this.jwtService.signAsync(payload),
-    };
   }
 
   public async findOne(
@@ -73,11 +80,15 @@ export class UserService {
     }
   }
 
-  update(id: number, updateUserDto: UpdateUserDto) {
-    return `This action updates a #${id} user`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  public async remove(id: number) {
+    try {
+      const user = await this.prisma.user.delete({
+        where: { id },
+      });
+      return user;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
   }
 }

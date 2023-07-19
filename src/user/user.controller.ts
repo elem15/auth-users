@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Patch,
   Param,
@@ -9,66 +8,66 @@ import {
   BadRequestException,
   UsePipes,
   ValidationPipe,
-  UnauthorizedException,
+  HttpCode,
   UseGuards,
-  Request,
+  Req,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserGuard } from './user.guard';
+import { AccessTokenGuard } from 'src/common/guards/access-token.guard';
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
-  @UsePipes(new ValidationPipe())
-  @Post('register')
-  async create(@Body() createUserDto: CreateUserDto) {
-    const existingUser = await this.userService.findByName(createUserDto.email);
-    if (existingUser) throw new BadRequestException('User already exist');
-    const user = await this.userService.create(createUserDto);
-    if (!user) throw new BadRequestException('User data is incorrect');
-    return user;
-  }
+  constructor(private readonly userService: UserService) {}
 
-  @UsePipes(new ValidationPipe())
-  @Post('login')
-  async login(@Body() createUserDto: CreateUserDto) {
-    const existingUser = await this.userService.findByName(createUserDto.email);
-    if (!existingUser) {
-      throw new UnauthorizedException('Email or password is incorrect');
-    }
-    const isPasswordCorrect = await this.userService.validateUser(
-      createUserDto.password,
-      existingUser,
-    );
-    if (!isPasswordCorrect)
-      throw new UnauthorizedException('Email or password is incorrect');
-    const token = await this.userService.generateJWT(
-      existingUser.id,
-      existingUser.email,
-    );
-    return token;
-  }
-
-  @UseGuards(UserGuard)
-  @Get('profile')
-  getProfile(@Request() req) {
-    return 'Autorized';
-  }
-
+  @UseGuards(AccessTokenGuard)
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(+id);
+  public async findOne(@Param('id') id: string, @Req() req: Request) {
+    if (id != req.user['sub']) {
+      throw new UnauthorizedException('Administrator privileges required');
+    }
+    const user = await this.userService.findOne(+id);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { refreshToken, ...safeUser } = user;
+    return safeUser;
   }
 
+  @UsePipes(new ValidationPipe())
+  @UseGuards(AccessTokenGuard)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(+id, updateUserDto);
+  public async update(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+  ) {
+    if (id != req.user['sub']) {
+      throw new UnauthorizedException('Administrator privileges required');
+    }
+    const isUser = await this.userService.findOne(+id);
+    if (!isUser) {
+      throw new BadRequestException('User not found');
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _, refreshToken, ...user } = updateUserDto;
+    const updatedUser = await this.userService.update(+id, user);
+    if (!updatedUser) {
+      throw new BadRequestException('This email already exist');
+    }
+    return updatedUser;
   }
 
+  @UseGuards(AccessTokenGuard)
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+  @HttpCode(204)
+  public async remove(@Param('id') id: string, @Req() req: Request) {
+    if (id != req.user['sub']) {
+      throw new UnauthorizedException('Administrator privileges required');
+    }
+    const updatedUser = await this.userService.remove(+id);
+    if (!updatedUser) {
+      throw new BadRequestException("User didn't delete");
+    }
   }
 }
